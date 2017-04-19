@@ -1,0 +1,159 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="pn" content="lp">
+<title>二维码登录</title>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+  
+
+
+
+
+  
+    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+      
+
+  
+
+<style>
+*{margin:0;padding:0;border:none;}
+html,body{ height:100%;}
+iframe{
+  border:none;
+  overflow:hidden;
+  margin:0 auto;
+  display:block;
+  width:100%; height:100%;
+}
+.with-no-qrsize{
+  width:400px;
+  height:400px;
+  border:none;
+  overflow:hidden;
+  margin:0 auto;
+  display:block;
+}
+</style>
+</head>
+<body>
+<iframe frameborder=0 border=0 src="about:blank" id="loginIframe">
+</iframe>
+</body>
+</html>
+<script>
+var version={
+  en:"e028b1f",
+  cn:"e028b1f",
+  tw:"e028b1f",
+  id:"e028b1f"
+};
+var LANG=(function(){
+    var locale=("zh_CN").toLowerCase();
+    if(locale){
+      if(locale.indexOf("en")>-1){
+        return {data:"en",cls:"en"};
+      }else if(locale.indexOf("zh")>-1){
+        if(locale.indexOf("cn")===-1){
+          return {data:"tw",cls:"zh_TW"};
+        }else{
+          return {data:"cn",cls:"zh_CN"};
+        }
+      }else if(locale.indexOf("in")>-1){
+        return {data:"id",cls:"in_ID"};
+      }
+    }
+    return {data:"en",cls:"en"};
+})();
+var ver=version[LANG.data];
+var params=(function(){
+    var ret = {},
+        seg = location.search.replace(/^\?/,'').split('&'),
+        len = seg.length, i = 0, s;
+    for (;i<len;i++) {
+        if (!seg[i]) { continue; }
+        s = seg[i].split('=');
+        if(s[0]!=="_"){
+          ret[s[0]] = decodeURIComponent( s[1] );
+        }
+    }
+    return ret;
+})();
+function setQrSize(_qrsize,qrIframe,_style){
+  _qrsize=parseInt(_qrsize,10)||0;
+  _qrsize=Math.max(_qrsize,170);
+  if(_style!=="lite"){
+    _qrsize+=116;
+  }
+  var cssStr="width:"+(_qrsize)+
+             "px;height:"+(_qrsize)+
+             "px;position:absolute;top:50%;left:50%;margin-top:-"+(_qrsize)/2+
+             "px;margin-left:-"+(_qrsize)/2+
+             "px;overflow:hidden";
+  qrIframe.setAttribute("style",cssStr);
+}
+var qrIframe=document.getElementById("loginIframe");
+var host="https://lg.lp.account.xiaomi.com";
+var version="";
+var search=(location.search?location.search+"&_=":"?_=")+(new Date().getTime());
+/*地址需要添加host*/
+var iframeUrl='https://lg.lp.account.xiaomi.com' + '/static/res/4959ea5/account-static/html/login/dist/passlp-cn.html'+ search;
+if(parseInt(params._qrsize)!==100){
+  setQrSize(params._qrsize,qrIframe,params._style);
+}else{
+  /*此段为兼容电视部分不遵循qrsize参数的版本*/
+  /*旧版已经发出的qrsize=100 只有这一个条件触发旧版*/
+  var _qrsize=parseInt(params._qrsize,10)||0;
+      _qrsize=Math.max(_qrsize,280)+116;
+  var cssStr="width:"+(_qrsize)+"px;"+
+             "height:"+(_qrsize)+"px;"+
+             "position:absolute;top:50%;left:50%;"+
+             "margin-top:-"+(_qrsize)/2+"px;"+
+             "margin-left:-"+(_qrsize)/2+"px";
+  qrIframe.setAttribute("style",cssStr);
+  qrIframe.className+=" with-no-qrsize";
+  iframeUrl=[host,
+            "/static/res/7034b26/account-static",
+            "/html/qrlogin/passlp.html",
+            search].join("");
+  /*这段在以后也不需要做任何更改*/
+}
+
+
+document.getElementById("loginIframe").src=iframeUrl;
+try{
+  document.domain="account.xiaomi.com";
+}catch(e){}
+</script>

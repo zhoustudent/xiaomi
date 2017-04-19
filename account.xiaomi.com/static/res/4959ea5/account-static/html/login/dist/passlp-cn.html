@@ -1,0 +1,571 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>小米帐号 - 二维码登录</title>
+  <script src="//account.xiaomi.com/static/res/42916/scripts/jquery-1.5.1.min.js">
+  </script>
+  <script src="//account.xiaomi.com/static/res/45ae328/account-static/scripts/ext/jq-qrcode/jquery.qrcode.min.js">
+  </script>
+  <style>
+    *{margin:0;padding:0;font: 12px "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;}
+    html,body{
+      width:100%;
+      height:100%;
+      *background:#f0f0f0;
+    }
+    .qr-box{
+      width:180px;
+      margin:0 auto;
+      height:180px;
+      overflow:hidden;
+      position:relative;
+    }
+    .qr-title{
+      padding:8px;
+      padding-bottom:20px;
+      text-align:center;
+      font-size:16px;
+      color:#666;
+    }
+    .qr-help{
+      text-align:center;
+      color:#999;
+      cursor:pointer;
+      font-size:12px;
+      margin:0 auto;
+      width:80%;
+      margin-top:25px;
+    }
+    .en .qr-help{
+      margin-top:12px;
+    }
+    .in_ID .qr-help{
+      margin-top:12px;
+    }
+    .qr-tip-mask{
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      border:1px solid #c2ddb6;
+      background:#000;
+      filter:alpha(Opacity=70);
+      opacity:0.7;
+      color:#ff7e00;
+      text-align:center;
+      z-index:110;
+    }
+    .qr-tip-con{
+      position:absolute;
+      top:50%;
+      left:0;
+      width:100%;
+      height:70px;
+      margin-top:-35px;
+      background:transparent;
+      z-index:120;
+    }
+    .qr-tip{
+      text-align:center;
+      color:#FFF;
+      font-size:18px;
+    }
+    .qr-img-con{
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      z-index:100;
+    }
+    .qr-img{border:none}
+    .qr-retry{
+      width:100px;
+      height:30px;
+      line-height:30px;
+      color:#FFF;
+      font-size:14px;
+      background:#ff7e00;
+      cursor:pointer;
+      margin:20px auto;
+      text-align:center;
+      border-radius:6px;
+    }
+    .tip-message .qr-tip{
+      margin-top:80px;
+    }
+    .tip-message .qr-retry{
+      display:none;
+    }
+    .qr-help-con{
+      width: 100%;
+      height: 100%;
+      background: #FFF;
+      position: absolute;
+    }
+    .lite .qr-title,.lite .qr-help-con,.lite .qr-help{
+      display:none;
+    }
+  </style>
+</head>
+<body>
+  <p class="qr-title" data-lang-text="title">扫码登录</p>
+  <div id="qr-div" class="qr-box">
+    <div class="qr-tip-mask">
+    </div>
+    <div class="qr-tip-con">
+      <p class="qr-tip" data-lang-text="loading">正在获取</p>
+      <p class="qr-retry" data-lang-text="refresh">刷新</p>
+    </div>
+    <div class="qr-img-con" id="qr">
+    </div>
+    <div class="qr-help-con">
+      <img class="qr-help-img" width="180" src="about:blank">
+    </div>
+  </div>
+  <p class="qr-help" data-lang-text="help">使用帮助</p>
+  <a style="display:none" id="redirectLink" href="" target="_top"></a>
+</body>
+</html>
+<script type="text/javascript">
+var params=(function(){
+    var ret = {},
+        seg = location.search.replace(/^\?/,'').split('&'),
+        len = seg.length, i = 0, s;
+    for (;i<len;i++) {
+        if (!seg[i]) { continue; }
+        s = seg[i].split('=');
+        if(s[0]!=="_"){
+          ret[s[0]] = decodeURIComponent( s[1] );
+        }
+    }
+    return ret;
+})();
+function getCookie(name) {
+  var key = name + '=', klen = key.length, carr = document.cookie.split(';');
+  for (var i = 0, tmp; tmp = carr[i++]; ) {
+    tmp = $.trim(tmp);
+    if (key == tmp.substring(0, klen)) {
+      return unescape(tmp.substring(klen));
+    }
+  }
+  return '';
+}
+var lang=params.lang||params._locale||getCookie("uLocale")||"en";
+var _qrImgSize=260;
+var _qrCodeSize=220;
+function setQrSize(_qrsize,_style){
+  _qrsize=parseInt(_qrsize,10)||0;
+  _qrsize=Math.max(_qrsize,170);
+  _qrImgSize=Math.floor(_qrsize*50/41);
+  hiddenBorder=(_qrImgSize-_qrsize)/2;
+  if(_style==="lite"){
+    $(document.body).addClass("lite");
+  }
+  _qrCodeSize=_qrsize;
+  $(".qr-box,.qr-help-con").css({width:_qrsize,height:_qrsize});
+
+  $(".qr-help-img").attr("width",_qrsize);
+  $(".qr-img").attr("width",_qrImgSize).css({
+    "margin-top":-hiddenBorder,
+    "margin-left":-hiddenBorder
+  });
+}
+setQrSize(params._qrsize,params._style);
+/*messages */
+var Messages={
+  docTitle:"小米帐号 - 二维码登录",
+  title:"扫码登录 安全快捷",
+  loading:"正在获取",
+  loadFail:"获取失败",
+  reloading:"获取失败，正在重试",
+  loginFail:"登录失败，正在重连",
+  expired:"二维码过期",
+  refresh:"刷新",
+  help:"请使用最新版MIUI中“我的小米”进行扫码登录",
+  success:"登录成功，正在跳转"
+};
+var helpImg="/static/res/4f854be/account-static/image/qrlogin-help-cn.jpg";
+$(".qr-help-img").attr("src",helpImg)
+window.msg=Messages;
+document.body.className+=" "+lang;
+var  iconData="data:image/png;base64,"+
+              "iVBORw0KGgoAAAANSUhEUgAAADkAAAA5CAIAAAADehTSAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA4JpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDoyMzg4NmJhNS0wMjhkLTQ5ZDEtYTJiZS02YTQ1OWI4ODU0OGUiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6ODM3QUM5ODQ3MTg1MTFFNTlFMzVBQkMyNTZFRTJGRTciIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6ODM3QUM5ODM3MTg1MTFFNTlFMzVBQkMyNTZFRTJGRTciIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTQgKE1hY2ludG9zaCkiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDoyNzlCNjlDN0RFNURFNTExOUI5N0UwRUVBRjVFRjEyRSIgc3RSZWY6ZG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOmYyNGRiOTI0LTdiM2QtMTE3OC05Y2Y1LWNi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"
+/*语言初始化*/
+  function initPageLang(){
+    document.title=msg.docTitle;
+    $("p").each(function(){
+      var that=$(this);
+      var langText=that.data("lang-text");
+      if(langText && (langText in msg)){
+        that.html(msg[langText])
+      }
+    })
+  }
+  initPageLang();
+</script>
+<script>
+(function(){
+  var msg=window.msg
+  var LOCK_GETQR=false;
+  var getQrError=0;
+  var MAX_GET_QR_ERROR=5;
+  var longPollError=0;
+  var MAX_LONG_POLL_ERROR=1;
+  var lastRequestTime=(new Date().getTime())-300000;
+  var getQrtc=null;
+  var QRErrorCorrectLevel = {
+        L : 1,
+        M : 0,
+        Q : 3,
+        H : 2
+      };
+  function showTip(tip){
+    var tipCon=$(".qr-tip");
+    var mask=$(".qr-tip-mask");
+    var tipConPa=tipCon.parent();
+    if(tip){
+      tipCon.html(tip);
+      tipConPa.show().addClass("tip-message");
+      mask.show();
+    }else{
+      tipConPa.hide().removeClass("tip-message");
+      tipCon.html("");
+      mask.hide();
+    }
+    resetQrhelp();
+  }
+  function showRetry(tip){
+    $(".qr-tip-mask").show();
+    $(".qr-tip").html(tip).parent().show();
+    resetQrhelp();
+  }
+  function init(){
+    if(!LOCK_GETQR && !getQrtc){
+      if(getQrError<MAX_GET_QR_ERROR){
+        LOCK_GETQR=true;
+        showTip(msg.loading);
+        getQrtc=setTimeout(function(){
+          getQr();
+          lastRequestTime=new Date().getTime();
+          getQrtc=null
+        },getTimeout());
+      }else{
+        showRetry(msg.loadFail)
+      }
+    }
+  }
+  function getTimeout(){
+    var now=new Date().getTime();
+    if(now-lastRequestTime>=300000){
+      return 0;
+    }else{
+      return Math.min( Math.max(getQrError,longPollError)*500,5000);
+    }
+  }
+  function postEventToClient(type,desc){
+    try{
+      var global_env= parent!==window?parent:window;
+      if(!('myqrcode' in global_env)){
+        return;
+      }
+    }catch(e){}
+    var types={
+      'success':'onQRLoadSuccess',
+      'loginSuccess':'onQRLoginSuccess',
+      'loginError':'onQRLoginError',
+      'timeout':'onQRTimeout',
+      'complete':'onQRLoadComplete',
+      'error':'onQRLoadError'
+    };
+    if(type in types){
+      try{
+        global_env.myqrcode[ types[type] ](desc);
+      }catch(e){
+        
+      }
+    }
+  }
+  function getQr(hold,error){
+    $.ajax({
+      type: "GET",
+      url: "/longPolling/loginUrl",
+      data:params,
+      cache: false,
+      dataType: "text"
+    }).done(function(data){
+      var json =null;
+      try{
+        json=eval('(' + data.substr(11) + ')');
+      }catch(e){}
+      if(json && json.code===0){
+        requestHold(json);
+      }else{
+        requestError(json);
+      }
+    }).error(function(xhr){
+      requestError(xhr);
+    });
+  }
+  function requestError(xhr){
+    getQrError++;
+    LOCK_GETQR=false;
+    showTip(msg.reloading);
+    init();
+    postEventToClient("error",msg.reloading);
+  }
+  function getQrcodeImg(data){
+    if(data.loginUrl){
+      qrOption={
+        text:data.loginUrl,
+        width:_qrCodeSize,
+        height:_qrCodeSize,
+        correctLevel:QRErrorCorrectLevel.M
+      }
+      if(!("getContext" in document.createElement("canvas"))){
+        qrOption.render="table";
+      }
+      $("#qr").attr("source",data.loginUrl);
+      $("#qr").html("");//设置新二维码需要清空原有的二维码
+      $('#qr').qrcode(qrOption);
+      //优先canvas
+      !drawMiLogo(_qrCodeSize*0.23,qrOption) && setOverImg(_qrCodeSize*0.23);
+
+      postEventToClient("complete");
+    }
+  }
+  function drawMiLogo(w,opt){
+    var canvas=$("#qr canvas").get(0);
+    if(!canvas){return false};
+
+    var start={x:(opt.width/2)-(w/2),y:(opt.width/2)-(w/2)};
+    var width=w;
+    var context=canvas.getContext("2d");
+    var border=w*drawMiLogo.S;
+    var hborder=(border/2);
+    var sqrt2=Math.sqrt(2);
+    var paddingtop=(w - 6*border)/2;
+    var paddingleft=(w - 7.5*border)/2;
+
+
+    //白色底
+    context.fillStyle = '#FFFFFF';
+    context.fillRect(start.x,start.y,w,w);
+
+    //橙色底
+    start.x+=border;
+    start.y+=border;
+    context.fillStyle =  "#ff6700";
+    context.fillRect(start.x,start.y,width-2*border,width-2*border);
+
+    //白色的基本形状
+    start.x+=paddingleft;
+    start.y+=paddingtop;
+    context.fillStyle =  '#FFFFFF';
+    context.fillRect(start.x,start.y,border,4*border);
+    context.fillRect(start.x,start.y,2*border+hborder,border);
+    context.fillRect(start.x+border+hborder,start.y+border+hborder,border,2*border+hborder);
+    context.fillRect(start.x+3*border,start.y+border+hborder,border,2*border+hborder);
+    context.fillRect(start.x+4*border+hborder,start.y,border,4*border);
+
+    //绘画扇形，外弧形，斜矩形，内弧形
+    context.beginPath();
+    context.arc(start.x+2*border+hborder,start.y+border+hborder,border+hborder,Math.PI*3/2,2*Math.PI,false)
+    context.closePath();
+    context.fillStyle =  '#FFFFFF';
+    context.fill();
+
+    context.beginPath();
+    context.moveTo(start.x+2.25*border,start.y+0.25*border);
+    context.lineTo(start.x+3.75*border,start.y+1.75*border);
+    context.lineWidth=Math.ceil(sqrt2*border/2);
+    context.closePath();
+    context.strokeStyle =  '#FFFFFF';
+    context.stroke();
+
+    context.beginPath();
+    context.arc(start.x+2*border+hborder,start.y+border+hborder,hborder,Math.PI*3/2,2*Math.PI,false)
+    context.closePath();
+    context.fillStyle =  '#ff6700';
+    context.fill();
+
+    /*HACK 补充细节 两条斜线补充细节不足*/
+    context.beginPath();
+    context.moveTo(start.x+2.5*border,start.y);
+    context.lineTo(start.x+4*border,start.y+1.5*border);
+    context.lineWidth=1;
+    context.closePath();
+    context.strokeStyle =  '#FFFFFF';
+    context.stroke();
+
+    context.beginPath();
+    context.moveTo(start.x+2.5*border,start.y+border);
+    context.lineTo(start.x+3*border,start.y+1.5*border);
+    context.lineWidth=1;
+    context.closePath();
+    context.strokeStyle =  '#ff6700';
+    context.stroke();
+
+    //四条线修正补充细节带来的一些额外杂点
+    context.fillStyle =  '#ff6700';
+    context.fillRect(start.x,start.y-1,3*border,1);
+    context.fillRect(start.x+4*border,start.y,2,4*border);
+    context.fillStyle =  '#FFFFFF';
+    context.fillRect(start.x,start.y+border-1,3*border,1);
+    context.fillRect(start.x+3*border,start.y+border,1,2*border);
+    return true;
+  }
+  drawMiLogo.XXXL=0.16;
+  drawMiLogo.XXL =0.14;
+  drawMiLogo.XL  =0.125;
+  drawMiLogo.L   =0.11;
+  drawMiLogo.M   =0.1;
+  drawMiLogo.S   =0.09;
+  drawMiLogo.XS  =0.08;
+  drawMiLogo.XXS =0.065;
+  drawMiLogo.XXXS=0.05;
+  function setOverImg(w){
+    if($.browser.ie && $.browser.version<8){
+       return 0;
+    }
+    var a=$(document.createElement("img")).css({
+      width:w,
+      height:w,
+      background:"#FFF",
+      position:"absolute",
+      left:"50%",
+      top:"50%",
+      "margin-left":-(w/2),
+      "margin-top":-(w/2)
+    }).attr("src",iconData);
+    $("#qr").append(a);
+  }
+  function requestHold(data){
+    LOCK_GETQR=false;
+    getQrcodeImg(data)
+    showTip();
+    $.ajax({
+      type: "GET",
+      url: data.lp,
+      async: true,
+      cache: false,
+      timeout: 315000
+    }).done(function(data){
+      var json =null;
+      try{
+        json=eval('(' + data.substr(11) + ')');
+      }catch(e){}
+      if(json && json.code===0){
+        holdSuccess(json);
+      }else{
+        holdError(json);
+        postEventToClient("loginError",msg.loginFail);
+      }
+    }).error(function(xhr){
+      holdError(xhr);
+    });
+  }
+  function holdError(xhr){
+    longPollError++;
+    if(longPollError<MAX_LONG_POLL_ERROR){
+      showTip(msg.loginFail);
+      init();
+    }else{
+      showRetry(msg.expired);
+      postEventToClient("timeout",msg.expired);
+    }
+  }
+  function holdSuccess(json){
+    showTip(msg.success);
+    if(json.passToken){
+      setCookie("passToken",json.passToken,"account.xiaomi.com");
+    }
+    if(json.userId){
+      setCookie("userId",json.userId,"account.xiaomi.com");
+      setCookie("userId",json.userId,"xiaomi.com");
+    }
+    postEventToClient("success",msg.success);
+    postEventToClient("loginSuccess",msg.success);
+    redirect(json.location);
+  }
+  function redirect(url){
+    var a=document.getElementById("redirectLink");
+    if(parent!==window && parent.location){
+      a.href=url;
+      try {
+        var evObj = document.createEvent('MouseEvents');
+        evObj.initMouseEvent('click', true, true, window);
+        redirectLink.dispatchEvent(evObj);
+      } catch (ignore) {
+        redirectLink.click();
+      }
+    }else{
+      location.href=url
+    }
+  }
+  function setCookie(name,value,domain){
+    document.cookie=name+"="+value+"; path=/;domain="+domain;
+  }
+  function resetQrhelp(){
+    qrHelpCon && qrHelpCon.css("z-index","0") && (qrHelpCon.inited=false);
+  }
+  init();
+  $(document.body).delegate(".qr-retry","click",function(){
+    getQrError=0;
+    longPollError=0;
+    var mask=$(".qr-tip-mask");
+    mask.hide();
+    init();
+  });
+  
+  var qrHelp   =$(".qr-help");
+  var qrImgCon =$(".qr-img-con")
+  var qrHelpCon=$(".qr-help-con").css("opacity",0);
+  var isHide=true;
+  var isMouseIn=false;
+  var checkStatTc=null
+  function showHelp(isCheck){
+    qrHelpCon.css("z-index",130).animate({opacity:1},200,function(){
+      !isCheck && checkHelpStat();
+      isHide=false;
+    });
+  }
+  function hideHelp(isCheck){
+    qrHelpCon.animate({opacity:0},200,function(){
+      qrHelpCon.css("z-index",0);
+      !isCheck && checkHelpStat();
+      isHide=true;
+    });
+  }
+  function checkHelpStat(){
+    if(checkStatTc){
+      clearTimeout(checkStatTc);
+    }
+    checkStatTc=setTimeout(function(){
+      if(isMouseIn){
+        showHelp();
+      }else{
+        hideHelp();
+      }
+    },230);
+  }
+  qrImgCon.bind("mouseover",function(){
+    isMouseIn=true;
+    if(isHide){
+      showHelp();
+    }
+  });
+  qrHelpCon.bind("mouseout",function(){
+    isMouseIn=false;
+    if(!isHide){
+      hideHelp();
+    }
+  });
+  var rootDomain=location.hostname.indexOf("preview")!==-1 ? "account.preview.n.xiaomi.net" : "account.xiaomi.com";
+  try{
+    document.domain=rootDomain
+  }catch(e){}
+})();
+</script>
